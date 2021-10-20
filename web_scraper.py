@@ -3,11 +3,9 @@ import sqlite3
 import numpy as np
 import requests_html
 from string import punctuation
+import threading
+import concurrent.futures
 
-
-conn = sqlite3.connect("preprocessed_dataset.db")
-name_plat = pd.read_sql("SELECT name, platform FROM games", conn)
-errors = []
 
 def clear_name(string):
     string = string.replace('_', '-')
@@ -31,12 +29,42 @@ def find_reviews(data):
         return reviews
     except:
         with open('errors_reviews.txt', 'a') as f:
-            f.writelines('\n\n'.join(data))
+            f.writelines('\n\n'.join(data) + "\n")
         return ""
+    
+def thread_func(data):
+    return data.apply(find_reviews, axis=1)
 
-name_plat["reviews"] = name_plat.apply(find_reviews, axis=1)
-print(name_plat.head())
-name_plat.to_csv("reviews.csv")
+
+
+if __name__ == "__main__":
+
+    conn = sqlite3.connect("data/preprocessed_dataset.db")
+    dataset = pd.read_sql("SELECT * FROM games", conn)
+    conn.close()
+    dataset.set_index("index", inplace=True)
+
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future1 = executor.submit(thread_func, dataset.loc[:470])
+        future2 = executor.submit(thread_func, dataset.loc[471:941])
+        future3 = executor.submit(thread_func, dataset.loc[942:1412])
+        future4 = executor.submit(thread_func, dataset.loc[1413:])
+
+        
+    revs = pd.concat([future1.result(), future2.result(), future3.result(), future4.result()])
+    print(revs.head())
+    revs.to_csv("data/reviews.csv")
+
+    dataset["reviews"] = revs
+    dataset.to_csv("data/dataset_reviews.csv")
+
+    conn = sqlite3.connect("data/dataset_reviews.db")
+    dataset.to_sql("games", conn)
+    conn.close()
+
+
+
 
 
 
