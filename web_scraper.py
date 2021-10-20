@@ -17,20 +17,7 @@ def clear_name(string):
     return string.translate(str.maketrans("", "", punc)).lower()
 
 
-session = requests_html.HTMLSession()
-r = session.get(f"https://www.metacritic.com/game/nintendo-64/the-legend-of-zelda-ocarina-of-time")
-
-
-
-
-
-
-
-
-
-
-
-def find_years(data):
+def find_reviews(data):
     
     session = requests_html.HTMLSession()
     print(f"https://www.metacritic.com/game/{clear_name(data['platform'])}/{clear_name(data['name'])}")
@@ -38,19 +25,18 @@ def find_years(data):
         
         r = session.get(f"https://www.metacritic.com/game/{clear_name(data['platform'][1:])}/{clear_name(data['name'])}")
 
-        summary_details = r.html.find(".summary_details", first=True)
-        date = summary_details.find(".release_data", first=True).text
-
+        reviews_html = r.html.find(".critic_reviews")[0]
+        reviews = "\n".join([review.text for review in reviews_html.find(".review_body")])
         print(data)
-        return int(date[-4:])
+        return reviews
     except:
-        with open('errors_year.txt', 'a') as f:
+        with open('errors_reviews.txt', 'a') as f:
             f.writelines('\n\n'.join(data))
-        return -1000
+        return ""
 
-#name_plat["release_year"] = name_plat.apply(find_years, axis=1)
-#print(name_plat.head())
-#name_plat.to_csv("years.csv")
+name_plat["reviews"] = name_plat.apply(find_reviews, axis=1)
+print(name_plat.head())
+name_plat.to_csv("reviews.csv")
 
 
 
