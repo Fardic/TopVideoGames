@@ -2,11 +2,7 @@ import pandas as pd
 import sqlite3
 import numpy as np
 
-conn = sqlite3.connect("dataset.db")
-dataset = pd.read_sql("SELECT * FROM games", conn)
-dataset.set_index("index", inplace=True)
-
-conn.close()
+dataset = pd.read_csv("all_games.csv")
 
 # tbd values for user_review changed to -1
 dataset.loc[dataset["user_review"] == "tbd", ["user_review"]] = -1
