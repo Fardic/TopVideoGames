@@ -1,10 +1,9 @@
 import pandas as pd
 import sqlite3
-import numpy as np
 import requests_html
 from string import punctuation
-import threading
-import concurrent.futures
+import re
+from sys import argv
 
 
 def clear_name(string):
@@ -12,11 +11,14 @@ def clear_name(string):
     string = string.replace(' ', '-')
     punc = punctuation.replace("-", "")
     punc = punc.replace("!", "")
-    return string.translate(str.maketrans("", "", punc)).lower()
+    r = re.compile(r'([.,/#!$%^&*;:{}=_`~()-])[.,/#!$%^&*;:{}=_`~()-]+')
+    return r.sub(r'\1', string.translate(str.maketrans("", "", punc)).lower())
+
+    
+
 
 
 def find_reviews(data):
-    
     session = requests_html.HTMLSession()
     print(f"https://www.metacritic.com/game/{clear_name(data['platform'])}/{clear_name(data['name'])}")
     try:
@@ -28,8 +30,11 @@ def find_reviews(data):
         print(data)
         return reviews
     except:
-        with open('errors_reviews.txt', 'a') as f:
-            f.writelines('\n\n'.join(data) + "\n")
+        try:
+            with open('errors_reviews.txt', 'a') as f:
+                f.writelines('\n\n'.join(data) + "\n")
+        except:
+            return ""
         return ""
     
 def thread_func(data):
@@ -45,23 +50,13 @@ if __name__ == "__main__":
     dataset.set_index("index", inplace=True)
 
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future1 = executor.submit(thread_func, dataset.loc[:470])
-        future2 = executor.submit(thread_func, dataset.loc[471:941])
-        future3 = executor.submit(thread_func, dataset.loc[942:1412])
-        future4 = executor.submit(thread_func, dataset.loc[1413:])
+    f = int(argv[1])
+    s = int(argv[2])
 
-        
-    revs = pd.concat([future1.result(), future2.result(), future3.result(), future4.result()])
+    
+    revs = thread_func(dataset.loc[f:s])
     print(revs.head())
-    revs.to_csv("data/reviews.csv")
-
-    dataset["reviews"] = revs
-    dataset.to_csv("data/dataset_reviews.csv")
-
-    conn = sqlite3.connect("data/dataset_reviews.db")
-    dataset.to_sql("games", conn)
-    conn.close()
+    revs.to_csv(f"data/reviews{int(argv[3])}.csv")
 
 
 
